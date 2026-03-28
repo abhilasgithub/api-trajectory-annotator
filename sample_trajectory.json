@@ -1,0 +1,58 @@
+{
+  "task_id": "traj_001",
+  "task_description": "Fetch user data from REST API and update role field",
+  "api_type": "rest",
+  "created_at": "2025-01-15T10:00:00Z",
+  "reasoning_chain": [
+    "Understand the goal: fetch user data, then update specific fields.",
+    "Identify required API endpoints: GET /users/{id} and PATCH /users/{id}.",
+    "Determine auth method: Bearer token in Authorization header.",
+    "Plan error handling: 404 (user not found), 401 (unauthorized), 422 (bad payload).",
+    "Execute fetch, validate response schema, build update payload, execute PATCH.",
+    "Verify update by re-fetching and comparing fields."
+  ],
+  "steps": [
+    {
+      "step_id": 1,
+      "action": "authenticate",
+      "description": "Obtain Bearer token via OAuth2 client credentials flow",
+      "reasoning": "All subsequent API calls require authentication. Fetching the token first avoids repeated 401 errors.",
+      "error_handling": "Retry once on network timeout; raise ValueError on 401."
+    },
+    {
+      "step_id": 2,
+      "action": "fetch_user",
+      "description": "GET /users/42 to retrieve current user record",
+      "reasoning": "We need the current state before updating to avoid overwriting unchanged fields.",
+      "error_handling": "Raise UserNotFoundError on 404; log and exit on 500."
+    },
+    {
+      "step_id": 3,
+      "action": "build_update_payload",
+      "description": "Construct PATCH payload with only changed fields",
+      "reasoning": "PATCH semantics require sending only modified fields to avoid race conditions.",
+      "error_handling": "Validate payload against schema before sending."
+    },
+    {
+      "step_id": 4,
+      "action": "update_user",
+      "description": "PATCH /users/42 with new role payload",
+      "reasoning": "Apply the minimal update using PATCH to preserve unmodified fields server-side.",
+      "error_handling": "Retry on 429 with exponential backoff; raise on 422."
+    },
+    {
+      "step_id": 5,
+      "action": "verify_update",
+      "description": "Re-fetch user and assert updated field matches expected value",
+      "reasoning": "Verification closes the feedback loop and catches eventual-consistency issues.",
+      "error_handling": "Raise AssertionError if role does not match after update."
+    }
+  ],
+  "summary": {
+    "total_steps": 5,
+    "api_calls": 3,
+    "estimated_duration_ms": 1200,
+    "complexity": "medium",
+    "annotation_confidence": 0.97
+  }
+}
